@@ -23,7 +23,19 @@ function onClickValutaControlli() {
         alert('Salvare il record prima di procedere con la valutazione.');
         return false;
     }
-    var url = '/risk_assessment_eval_form.do?sys_id=' + sysId;
-    window.open(url, '_blank');
+    var url = 'risk_assessment_eval_form.do?sys_id=' + sysId;
+
+    // Try ServiceNow native navigation first, fallback to link click
+    if (typeof g_navigation !== 'undefined' && g_navigation.openSeparate) {
+        g_navigation.openSeparate(url);
+    } else {
+        var link = document.createElement('a');
+        link.href = '/' + url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
     return false;
 }
