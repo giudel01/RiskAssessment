@@ -331,6 +331,317 @@
     var g_pageData = ${jvar_page_data};
 </script>
 
+<!-- Client script: renders form from g_pageData, handles validation and save -->
+<script>
+// ========================================================
+// Client Script — risk_assessment_eval_form (Vanilla JS)
+// No jQuery dependency. No ES6.
+// ========================================================
+(function() {
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function getTodayStr() {
+        var d = new Date();
+        var yyyy = d.getFullYear();
+        var mm = String(d.getMonth() + 1);
+        if (mm.length < 2) mm = '0' + mm;
+        var dd = String(d.getDate());
+        if (dd.length < 2) dd = '0' + dd;
+        return yyyy + '-' + mm + '-' + dd;
+    }
+
+    function byId(id) { return document.getElementById(id); }
+
+    // ---- Wait for DOM ready ----
+    document.addEventListener('DOMContentLoaded', function() {
+
+        var data = window.g_pageData;
+
+        // Fallback if data missing
+        if (!data || typeof data !== 'object') {
+            byId('errorContainer').innerHTML =
+                '<div class="alert alert-danger">Errore nel caricamento dei dati. Verificare che il sys_id sia presente nell\'URL.</div>';
+            return;
+        }
+
+        // Set header
+        byId('headerNumber').textContent = data.number || '';
+
+        // Show error
+        if (data.errorMessage) {
+            byId('errorContainer').innerHTML =
+                '<div class="alert alert-danger">' + escapeHtml(data.errorMessage) + '</div>';
+            return;
+        }
+
+        if (!data.recordFound) {
+            byId('errorContainer').innerHTML =
+                '<div class="alert alert-danger">Record non trovato.</div>';
+            return;
+        }
+
+        // =============================================
+        // RENDER THE FORM
+        // =============================================
+        var html = '';
+
+        // Hidden fields
+        html += '<input type="hidden" id="raSysId" value="' + escapeHtml(data.sysId) + '" />';
+        html += '<input type="hidden" id="rischioInerenteHidden" value="' + escapeHtml(data.rischioInerente) + '" />';
+
+        // SECTION A
+        html += '<div class="section-title">A &#8212; Dati del Risk Assessment</div>';
+        html += '<div class="info-box">';
+        html += '  <div class="info-row"><span class="info-label">Number:</span> <span class="info-value">' + escapeHtml(data.number) + '</span></div>';
+        html += '  <div class="info-row"><span class="info-label">Short Description:</span> <span class="info-value">' + escapeHtml(data.shortDescription) + '</span></div>';
+        html += '</div>';
+
+        // SECTION B
+        html += '<div class="section-title">B &#8212; Valutazione del Risk Assessment</div>';
+        html += '<div class="form-inline-row">';
+
+        // Probabilita
+        html += '<div class="form-group">';
+        html += '  <label for="probabilita">Probabilit\u00e0 Inerente <span class="required-marker">*</span></label>';
+        html += '  <select id="probabilita" name="probabilita">';
+        html += '    <option value="">-- Seleziona --</option>';
+        html += '    <option value="1"' + (data.probabilita === '1' ? ' selected' : '') + '>Bassa</option>';
+        html += '    <option value="2"' + (data.probabilita === '2' ? ' selected' : '') + '>Media</option>';
+        html += '    <option value="3"' + (data.probabilita === '3' ? ' selected' : '') + '>Alta</option>';
+        html += '  </select>';
+        html += '</div>';
+
+        // Impatto
+        html += '<div class="form-group">';
+        html += '  <label for="impatto">Impatto Inerente <span class="required-marker">*</span></label>';
+        html += '  <select id="impatto" name="impatto">';
+        html += '    <option value="">-- Seleziona --</option>';
+        html += '    <option value="1"' + (data.impatto === '1' ? ' selected' : '') + '>Basso</option>';
+        html += '    <option value="2"' + (data.impatto === '2' ? ' selected' : '') + '>Medio</option>';
+        html += '    <option value="3"' + (data.impatto === '3' ? ' selected' : '') + '>Alto</option>';
+        html += '  </select>';
+        html += '</div>';
+
+        // Rischio Inerente (read-only)
+        html += '<div class="form-group">';
+        html += '  <label for="rischioInerente">Rischio Inerente</label>';
+        html += '  <input type="text" id="rischioInerente" name="rischioInerente" readonly value="' + escapeHtml(data.rischioInerente) + '" />';
+        html += '</div>';
+        html += '</div>';
+
+        // Data Valutazione
+        var dataValDefault = data.dataValutazione || getTodayStr();
+        html += '<div class="form-inline-row">';
+        html += '  <div class="form-group">';
+        html += '    <label for="dataValutazione">Data Valutazione <span class="required-marker">*</span></label>';
+        html += '    <input type="date" id="dataValutazione" name="dataValutazione" value="' + escapeHtml(dataValDefault) + '" />';
+        html += '  </div>';
+        html += '</div>';
+
+        // Note
+        html += '<div class="form-group">';
+        html += '  <label for="noteValutazione">Note Valutazione</label>';
+        html += '  <textarea id="noteValutazione" name="noteValutazione" maxlength="1000" placeholder="Max 1000 caratteri">' + escapeHtml(data.noteValutazione) + '</textarea>';
+        html += '</div>';
+
+        // SECTION C
+        html += '<div class="section-title">C &#8212; Valutazione dei Controlli Associati</div>';
+
+        if (!data.m2mData || data.m2mData.length === 0) {
+            html += '<div class="no-controls-msg">Nessun controllo associato a questo Risk Assessment.</div>';
+        } else {
+            html += '<div class="controls-table-wrapper">';
+            html += '<table class="controls-table"><thead><tr>';
+            html += '<th style="width:15%;">Numero Controllo</th>';
+            html += '<th style="width:45%;">Descrizione</th>';
+            html += '<th style="width:40%;">Risultato <span style="color:#d32f2f;">*</span></th>';
+            html += '</tr></thead><tbody>';
+
+            for (var i = 0; i < data.m2mData.length; i++) {
+                var row = data.m2mData[i];
+                var sid = escapeHtml(row.m2mSysId);
+                var ris = row.risultato || '';
+
+                html += '<tr>';
+                html += '<td>' + escapeHtml(row.controlNumber) + '</td>';
+                html += '<td>' + escapeHtml(row.controlDesc) + '</td>';
+                html += '<td>';
+                html += '<select class="m2m-risultato" data-m2m-sysid="' + sid + '" id="risultato_' + sid + '">';
+                html += '<option value="">-- Seleziona --</option>';
+                html += '<option value="conforme"' + (ris === 'conforme' ? ' selected' : '') + '>Conforme</option>';
+                html += '<option value="parzialmente_conforme"' + (ris === 'parzialmente_conforme' ? ' selected' : '') + '>Parzialmente Conforme</option>';
+                html += '<option value="non_conforme"' + (ris === 'non_conforme' ? ' selected' : '') + '>Non Conforme</option>';
+                html += '<option value="non_applicabile"' + (ris === 'non_applicabile' ? ' selected' : '') + '>Non Applicabile</option>';
+                html += '</select>';
+                html += '</td></tr>';
+            }
+
+            html += '</tbody></table></div>';
+        }
+
+        // Footer
+        html += '<div class="footer-actions">';
+        html += '  <button type="button" class="btn btn-secondary" id="btnAnnulla">Annulla</button>';
+        html += '  <button type="button" class="btn btn-primary" id="btnSalva">Salva</button>';
+        html += '</div>';
+
+        byId('mainContent').innerHTML = html;
+
+        // =============================================
+        // DYNAMIC CALC — Rischio Inerente
+        // =============================================
+        byId('probabilita').addEventListener('change', calcRischioInerente);
+        byId('impatto').addEventListener('change', calcRischioInerente);
+
+        function calcRischioInerente() {
+            var prob = parseInt(byId('probabilita').value, 10) || 0;
+            var imp = parseInt(byId('impatto').value, 10) || 0;
+            var rischio = '';
+            if (prob > 0 && imp > 0) rischio = prob * imp;
+            byId('rischioInerente').value = rischio;
+            byId('rischioInerenteHidden').value = rischio;
+
+            if (rischio !== '') {
+                var field = byId('rischioInerente');
+                field.classList.add('highlight-flash');
+                setTimeout(function() { field.classList.remove('highlight-flash'); }, 500);
+            }
+        }
+
+        // =============================================
+        // VALIDATION
+        // =============================================
+        function validateForm() {
+            var errors = [];
+            byId('errorContainer').innerHTML = '';
+
+            // Remove previous field-error classes
+            var errFields = document.querySelectorAll('.field-error');
+            for (var e = 0; e < errFields.length; e++) errFields[e].classList.remove('field-error');
+
+            if (!byId('probabilita').value) {
+                errors.push('Il campo "Probabilit\u00e0 Inerente" \u00e8 obbligatorio.');
+                byId('probabilita').classList.add('field-error');
+            }
+            if (!byId('impatto').value) {
+                errors.push('Il campo "Impatto Inerente" \u00e8 obbligatorio.');
+                byId('impatto').classList.add('field-error');
+            }
+            if (!byId('dataValutazione').value) {
+                errors.push('Il campo "Data Valutazione" \u00e8 obbligatorio.');
+                byId('dataValutazione').classList.add('field-error');
+            }
+
+            if (data.m2mData && data.m2mData.length > 0) {
+                var selects = document.querySelectorAll('.m2m-risultato');
+                var missingControls = [];
+                for (var s = 0; s < selects.length; s++) {
+                    if (!selects[s].value) {
+                        selects[s].classList.add('field-error');
+                        var sysId = selects[s].getAttribute('data-m2m-sysid');
+                        for (var j = 0; j < data.m2mData.length; j++) {
+                            if (data.m2mData[j].m2mSysId === sysId) {
+                                missingControls.push(data.m2mData[j].controlNumber);
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (missingControls.length > 0) {
+                    errors.push('Il campo "Risultato" \u00e8 obbligatorio per: ' + missingControls.join(', '));
+                }
+            }
+
+            if (errors.length > 0) {
+                var errHtml = '<div class="alert alert-danger"><strong>Errori di validazione:</strong><ul>';
+                for (var k = 0; k < errors.length; k++) errHtml += '<li>' + errors[k] + '</li>';
+                errHtml += '</ul></div>';
+                byId('errorContainer').innerHTML = errHtml;
+                window.scrollTo(0, 0);
+                return false;
+            }
+            return true;
+        }
+
+        // =============================================
+        // SAVE — GlideAjax
+        // =============================================
+        byId('btnSalva').addEventListener('click', function() {
+            if (validateForm()) saveEvaluation();
+        });
+
+        function saveEvaluation() {
+            byId('btnSalva').disabled = true;
+            byId('savingOverlay').style.display = 'block';
+
+            var m2mResults = [];
+            var selects = document.querySelectorAll('.m2m-risultato');
+            for (var s = 0; s < selects.length; s++) {
+                m2mResults.push({
+                    m2mSysId: selects[s].getAttribute('data-m2m-sysid'),
+                    risultato: selects[s].value
+                });
+            }
+
+            var ga = new GlideAjax('SaveRiskEvaluation');
+            ga.addParam('sysparm_name', 'saveEvaluation');
+            ga.addParam('sysparm_sys_id', data.sysId);
+            ga.addParam('sysparm_probabilita', byId('probabilita').value);
+            ga.addParam('sysparm_impatto', byId('impatto').value);
+            ga.addParam('sysparm_rischio', byId('rischioInerenteHidden').value);
+            ga.addParam('sysparm_data_valutazione', byId('dataValutazione').value);
+            ga.addParam('sysparm_note_valutazione', byId('noteValutazione').value);
+            ga.addParam('sysparm_m2m_results', JSON.stringify(m2mResults));
+
+            ga.getXMLAnswer(function(response) {
+                byId('savingOverlay').style.display = 'none';
+                byId('btnSalva').disabled = false;
+
+                try {
+                    var result = JSON.parse(response);
+                    if (result.success) {
+                        var returnUrl = 'nav_to.do?uri=u_risk_assessment_custom.do'
+                            + '?sys_id=' + encodeURIComponent(data.sysId)
+                            + '%26sysparm_view=default'
+                            + '%26sysparm_message=' + encodeURIComponent('Valutazione salvata con successo');
+
+                        if (window.opener) {
+                            window.opener.location.href = returnUrl;
+                            window.close();
+                        } else {
+                            window.location.href = returnUrl;
+                        }
+                    } else {
+                        byId('errorContainer').innerHTML =
+                            '<div class="alert alert-danger"><strong>Errore:</strong> ' + escapeHtml(result.message) + '</div>';
+                        window.scrollTo(0, 0);
+                    }
+                } catch (ex) {
+                    byId('errorContainer').innerHTML =
+                        '<div class="alert alert-danger"><strong>Errore di rete.</strong> Riprovare.</div>';
+                    window.scrollTo(0, 0);
+                }
+            });
+        }
+
+        // =============================================
+        // CANCEL
+        // =============================================
+        byId('btnAnnulla').addEventListener('click', function() {
+            window.close();
+        });
+
+    }); // DOMContentLoaded
+
+})();
+</script>
+
 </body>
 </html>
 </j:jelly>
