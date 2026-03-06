@@ -2,7 +2,7 @@
 // Client Script — risk_assessment_eval_form
 // Da inserire nel tab "Client script" della UI Page.
 // Vanilla JS, no jQuery, no ES6.
-// Carica dati via GlideAjax, renderizza il form, gestisce save.
+// Usa XMLHttpRequest diretto — nessuna dipendenza da GlideAjax.
 // ========================================================
 
 function escapeHtml(str) {
@@ -37,34 +37,100 @@ function getUrlParam(name) {
     return '';
 }
 
-// ---- MAIN INIT (runs when DOM is ready) ----
-addLoadEvent(function() {
-
-    var sysId = getUrlParam('sys_id');
-    if (!sysId) {
-        byId('mainContent').innerHTML = '';
-        byId('errorContainer').innerHTML =
-            '<div class="alert alert-danger">Parametro sys_id mancante. Chiudere questa finestra e riprovare.</div>';
-        return;
+// ---- Call Script Include via XMLHttpRequest ----
+function callScriptInclude(scriptName, functionName, params, callback) {
+    var url = '/xmlhttp.do';
+    var body = 'sysparm_processor=' + encodeURIComponent(scriptName);
+    body += '&sysparm_name=' + encodeURIComponent(functionName);
+    for (var key in params) {
+        if (params.hasOwnProperty(key)) {
+            body += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+        }
     }
 
-    // Load data via GlideAjax
-    var ga = new GlideAjax('SaveRiskEvaluation');
-    ga.addParam('sysparm_name', 'getEvaluationData');
-    ga.addParam('sysparm_sys_id', sysId);
-    ga.getXMLAnswer(function(response) {
-        var data;
-        try {
-            data = JSON.parse(response);
-        } catch (e) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.setRequestHeader('X-UserToken', window.g_ck || '');
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                // ServiceNow returns XML; extract the answer element
+                var responseText = '';
+                try {
+                    var xml = xhr.responseXML;
+                    if (xml) {
+                        var answerEl = xml.documentElement.getAttribute('answer');
+                        if (answerEl) {
+                            responseText = answerEl;
+                        } else {
+                            // Try to find answer element
+                            var items = xml.getElementsByTagName('xml');
+                            if (items.length > 0) {
+                                responseText = items[0].getAttribute('answer') || '';
+                            }
+                        }
+                    }
+                    if (!responseText) {
+                        responseText = xhr.responseText;
+                    }
+                } catch (e) {
+                    responseText = xhr.responseText;
+                }
+                callback(null, responseText);
+            } else {
+                callback('HTTP error: ' + xhr.status, null);
+            }
+        }
+    };
+    xhr.send(body);
+}
+
+// ---- MAIN INIT ----
+// Use multiple fallbacks for DOM ready
+(function() {
+    function init() {
+        var sysId = getUrlParam('sys_id');
+        if (!sysId) {
             byId('mainContent').innerHTML = '';
             byId('errorContainer').innerHTML =
-                '<div class="alert alert-danger">Errore nel parsing della risposta dal server.</div>';
+                '<div class="alert alert-danger">Parametro sys_id mancante. Chiudere questa finestra e riprovare.</div>';
             return;
         }
-        renderPage(data);
-    });
-});
+
+        // Load data
+        callScriptInclude('SaveRiskEvaluation', 'getEvaluationData',
+            { sysparm_sys_id: sysId },
+            function(err, response) {
+                if (err) {
+                    byId('mainContent').innerHTML = '';
+                    byId('errorContainer').innerHTML =
+                        '<div class="alert alert-danger">Errore di comunicazione col server: ' + escapeHtml(err) + '</div>';
+                    return;
+                }
+                var data;
+                try {
+                    data = JSON.parse(response);
+                } catch (e) {
+                    byId('mainContent').innerHTML = '';
+                    byId('errorContainer').innerHTML =
+                        '<div class="alert alert-danger">Errore nel parsing della risposta. Risposta: ' + escapeHtml(String(response).substring(0, 200)) + '</div>';
+                    return;
+                }
+                renderPage(data);
+            }
+        );
+    }
+
+    // DOM ready: try addLoadEvent (ServiceNow built-in), fallback to DOMContentLoaded
+    if (typeof addLoadEvent === 'function') {
+        addLoadEvent(init);
+    } else if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
 
 function renderPage(data) {
 
@@ -89,14 +155,14 @@ function renderPage(data) {
     html += '<input type="hidden" id="raSysId" value="' + escapeHtml(data.sysId) + '" />';
     html += '<input type="hidden" id="rischioInerenteHidden" value="' + escapeHtml(data.rischioInerente) + '" />';
 
-    // SECTION A — read-only
+    // SECTION A
     html += '<div class="section-title">A — Dati del Risk Assessment</div>';
     html += '<div class="info-box">';
     html += '<div class="info-row"><span class="info-label">Number:</span> <span class="info-value">' + escapeHtml(data.number) + '</span></div>';
     html += '<div class="info-row"><span class="info-label">Short Description:</span> <span class="info-value">' + escapeHtml(data.shortDescription) + '</span></div>';
     html += '</div>';
 
-    // SECTION B — editable
+    // SECTION B
     html += '<div class="section-title">B — Valutazione del Risk Assessment</div>';
     html += '<div class="form-inline-row">';
 
@@ -135,7 +201,7 @@ function renderPage(data) {
     html += '<textarea id="noteValutazione" maxlength="1000" placeholder="Max 1000 caratteri">' + escapeHtml(data.noteValutazione) + '</textarea>';
     html += '</div>';
 
-    // SECTION C — controlli
+    // SECTION C
     html += '<div class="section-title">C — Valutazione dei Controlli Associati</div>';
 
     if (!data.m2mData || data.m2mData.length === 0) {
@@ -259,41 +325,51 @@ function saveEvaluation(data) {
         });
     }
 
-    var ga = new GlideAjax('SaveRiskEvaluation');
-    ga.addParam('sysparm_name', 'saveEvaluation');
-    ga.addParam('sysparm_sys_id', data.sysId);
-    ga.addParam('sysparm_probabilita', byId('probabilita').value);
-    ga.addParam('sysparm_impatto', byId('impatto').value);
-    ga.addParam('sysparm_rischio', byId('rischioInerenteHidden').value);
-    ga.addParam('sysparm_data_valutazione', byId('dataValutazione').value);
-    ga.addParam('sysparm_note_valutazione', byId('noteValutazione').value);
-    ga.addParam('sysparm_m2m_results', JSON.stringify(m2mResults));
+    var params = {
+        sysparm_sys_id: data.sysId,
+        sysparm_probabilita: byId('probabilita').value,
+        sysparm_impatto: byId('impatto').value,
+        sysparm_rischio: byId('rischioInerenteHidden').value,
+        sysparm_data_valutazione: byId('dataValutazione').value,
+        sysparm_note_valutazione: byId('noteValutazione').value,
+        sysparm_m2m_results: JSON.stringify(m2mResults)
+    };
 
-    ga.getXMLAnswer(function(response) {
-        byId('savingOverlay').style.display = 'none';
-        byId('btnSalva').disabled = false;
-        try {
-            var result = JSON.parse(response);
-            if (result.success) {
-                var returnUrl = 'nav_to.do?uri=u_risk_assessment_custom.do'
-                    + '?sys_id=' + encodeURIComponent(data.sysId)
-                    + '%26sysparm_view=default'
-                    + '%26sysparm_message=' + encodeURIComponent('Valutazione salvata con successo');
-                if (window.opener) {
-                    window.opener.location.href = returnUrl;
-                    window.close();
-                } else {
-                    window.location.href = returnUrl;
-                }
-            } else {
+    callScriptInclude('SaveRiskEvaluation', 'saveEvaluation', params,
+        function(err, response) {
+            byId('savingOverlay').style.display = 'none';
+            byId('btnSalva').disabled = false;
+
+            if (err) {
                 byId('errorContainer').innerHTML =
-                    '<div class="alert alert-danger"><strong>Errore:</strong> ' + escapeHtml(result.message) + '</div>';
+                    '<div class="alert alert-danger"><strong>Errore di rete:</strong> ' + escapeHtml(err) + '</div>';
+                window.scrollTo(0, 0);
+                return;
+            }
+
+            try {
+                var result = JSON.parse(response);
+                if (result.success) {
+                    var returnUrl = 'nav_to.do?uri=u_risk_assessment_custom.do'
+                        + '?sys_id=' + encodeURIComponent(data.sysId)
+                        + '%26sysparm_view=default'
+                        + '%26sysparm_message=' + encodeURIComponent('Valutazione salvata con successo');
+                    if (window.opener) {
+                        window.opener.location.href = returnUrl;
+                        window.close();
+                    } else {
+                        window.location.href = returnUrl;
+                    }
+                } else {
+                    byId('errorContainer').innerHTML =
+                        '<div class="alert alert-danger"><strong>Errore:</strong> ' + escapeHtml(result.message) + '</div>';
+                    window.scrollTo(0, 0);
+                }
+            } catch (ex) {
+                byId('errorContainer').innerHTML =
+                    '<div class="alert alert-danger"><strong>Errore nel parsing risposta.</strong> ' + escapeHtml(String(response).substring(0, 200)) + '</div>';
                 window.scrollTo(0, 0);
             }
-        } catch (ex) {
-            byId('errorContainer').innerHTML =
-                '<div class="alert alert-danger"><strong>Errore di rete.</strong> Riprovare.</div>';
-            window.scrollTo(0, 0);
         }
-    });
+    );
 }
