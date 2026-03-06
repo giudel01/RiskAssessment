@@ -1,140 +1,69 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
 
-<!-- Processing Script variables are injected via Jelly evaluate -->
-<g2:evaluate var="jvar_sys_id" jelly="true">
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    sysIdParam;
-</g2:evaluate>
+<g2:evaluate var="jvar_page_data" jelly="true">
+    var output = {
+        sysId: '',
+        number: '',
+        shortDescription: '',
+        probabilita: '',
+        impatto: '',
+        rischioInerente: '',
+        dataValutazione: '',
+        noteValutazione: '',
+        recordFound: false,
+        errorMessage: '',
+        m2mData: []
+    };
 
-<g2:evaluate var="jvar_error_message" jelly="true">
-    var errorMsg = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (!sysIdParam) {
-        errorMsg = 'Parametro sys_id mancante. Chiudere questa finestra e riprovare.';
-    } else {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (!gr.get(sysIdParam)) {
-            errorMsg = 'Record Risk Assessment non trovato.';
-        }
-    }
-    errorMsg;
-</g2:evaluate>
+    try {
+        var sysIdParam = RP.getParameterValue('sys_id');
+        if (!sysIdParam || sysIdParam == 'null' || sysIdParam == 'undefined') {
+            output.errorMessage = 'Parametro sys_id mancante. Chiudere questa finestra e riprovare.';
+        } else {
+            output.sysId = sysIdParam + '';
+            var gr = new GlideRecord('u_risk_assessment_custom');
+            if (gr.get(sysIdParam)) {
+                output.recordFound = true;
+                output.number = gr.getValue('number') || '';
+                output.shortDescription = gr.getValue('short_description') || '';
+                output.probabilita = gr.getValue('u_probabilita_inerente231') || '';
+                output.impatto = gr.getValue('u_impatto_inerente231') || '';
+                output.rischioInerente = gr.getValue('u_rischio_inerente') || '';
+                output.dataValutazione = gr.getValue('u_data_valutazione') || '';
+                output.noteValutazione = gr.getValue('u_note_valutazione') || '';
 
-<g2:evaluate var="jvar_record_found" jelly="true">
-    var found = 'false';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) {
-            found = 'true';
-        }
-    }
-    found;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_number" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('number') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_short_desc" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('short_description') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_probabilita" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('u_probabilita_inerente231') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_impatto" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('u_impatto_inerente231') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_rischio" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('u_rischio_inerente') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_data_val" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('u_data_valutazione') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_ra_note_val" jelly="true">
-    var val = '';
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var gr = new GlideRecord('u_risk_assessment_custom');
-        if (gr.get(sysIdParam)) { val = gr.getValue('u_note_valutazione') || ''; }
-    }
-    val;
-</g2:evaluate>
-
-<g2:evaluate var="jvar_m2m_data" jelly="true">
-    var m2mArray = [];
-    var sysIdParam = RP.getParameterValue('sys_id') || '';
-    if (sysIdParam) {
-        var grCheck = new GlideRecord('u_risk_assessment_custom');
-        if (grCheck.get(sysIdParam)) {
-            var m2m = new GlideRecord('u_m2m_u_risk_asmt_control');
-            m2m.addQuery('u_risk_assessment_custom', sysIdParam);
-            m2m.query();
-            while (m2m.next()) {
-                var cNum = '';
-                var cDesc = '';
-                var controlRef = m2m.u_sn_compliance_control;
-                if (controlRef) {
-                    cNum = controlRef.number + '';
-                    cDesc = controlRef.short_description + '';
+                var m2m = new GlideRecord('u_m2m_u_risk_asmt_control');
+                m2m.addQuery('u_risk_assessment_custom', sysIdParam);
+                m2m.query();
+                while (m2m.next()) {
+                    var cNum = '';
+                    var cDesc = '';
+                    if (m2m.u_sn_compliance_control) {
+                        cNum = m2m.u_sn_compliance_control.number + '';
+                        cDesc = m2m.u_sn_compliance_control.short_description + '';
+                    }
+                    output.m2mData.push({
+                        m2mSysId: m2m.getUniqueValue() + '',
+                        controlNumber: cNum,
+                        controlDesc: cDesc,
+                        risultato: m2m.getValue('u_risultato') || ''
+                    });
                 }
-                m2mArray.push({
-                    m2mSysId: m2m.getUniqueValue(),
-                    controlNumber: cNum,
-                    controlDesc: cDesc,
-                    risultato: m2m.getValue('u_risultato') || ''
-                });
+            } else {
+                output.errorMessage = 'Record Risk Assessment non trovato.';
             }
         }
+    } catch (e) {
+        output.errorMessage = 'Errore server: ' + e.message;
     }
-    JSON.stringify(m2mArray);
+
+    JSON.stringify(output);
 </g2:evaluate>
 
 <html>
 <head>
-    <title>Valutazione Risk Assessment - ${jvar_ra_number}</title>
+    <title>Valutazione Risk Assessment</title>
     <style>
         body {
             font-family: SourceSansPro, "Helvetica Neue", Arial, sans-serif;
@@ -177,9 +106,6 @@
             padding-bottom: 8px;
             margin-top: 24px;
             margin-bottom: 16px;
-        }
-        .section-title:first-child {
-            margin-top: 0;
         }
         .info-box {
             background-color: #f0f7fb;
@@ -386,111 +312,23 @@
 </div>
 
 <div class="ra-eval-container">
-
     <!-- Header -->
     <div class="ra-eval-header">
-        <h1>Valutazione Risk Assessment &#8212; <strong>${jvar_ra_number}</strong></h1>
+        <h1>Valutazione Risk Assessment &#8212; <strong id="headerNumber"></strong></h1>
     </div>
 
     <div class="ra-eval-body">
-
         <!-- Error messages container -->
         <div id="errorContainer"></div>
 
-        <!-- Show error if sys_id missing or record not found -->
-        <j:if test="${jvar_error_message != ''}">
-            <div class="alert alert-danger" id="serverError">
-                ${jvar_error_message}
-            </div>
-        </j:if>
-
-        <j:if test="${jvar_record_found == 'true'}">
-
-            <!-- Hidden field for sys_id -->
-            <input type="hidden" id="raSysId" value="${jvar_sys_id}" />
-            <!-- Hidden field for rischio inerente (for submit) -->
-            <input type="hidden" id="rischioInerenteHidden" value="${jvar_ra_rischio}" />
-
-            <!-- SECTION A — Dati del Risk Assessment (read-only) -->
-            <div class="section-title">A &#8212; Dati del Risk Assessment</div>
-            <div class="info-box">
-                <div class="info-row">
-                    <span class="info-label">Number:</span>
-                    <span class="info-value">${jvar_ra_number}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Short Description:</span>
-                    <span class="info-value">${jvar_ra_short_desc}</span>
-                </div>
-            </div>
-
-            <!-- SECTION B — Valutazione del Risk Assessment (editabile) -->
-            <div class="section-title">B &#8212; Valutazione del Risk Assessment</div>
-
-            <div class="form-inline-row">
-                <div class="form-group">
-                    <label for="probabilita">Probabilit&#224; Inerente <span class="required-marker">*</span></label>
-                    <select id="probabilita" name="probabilita">
-                        <option value="">-- Seleziona --</option>
-                        <option value="1">Bassa</option>
-                        <option value="2">Media</option>
-                        <option value="3">Alta</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="impatto">Impatto Inerente <span class="required-marker">*</span></label>
-                    <select id="impatto" name="impatto">
-                        <option value="">-- Seleziona --</option>
-                        <option value="1">Basso</option>
-                        <option value="2">Medio</option>
-                        <option value="3">Alto</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="rischioInerente">Rischio Inerente</label>
-                    <input type="text" id="rischioInerente" name="rischioInerente" readonly="readonly" value="${jvar_ra_rischio}" />
-                </div>
-            </div>
-
-            <div class="form-inline-row">
-                <div class="form-group">
-                    <label for="dataValutazione">Data Valutazione <span class="required-marker">*</span></label>
-                    <input type="date" id="dataValutazione" name="dataValutazione" value="" />
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="noteValutazione">Note Valutazione</label>
-                <textarea id="noteValutazione" name="noteValutazione" maxlength="1000" placeholder="Max 1000 caratteri">${jvar_ra_note_val}</textarea>
-            </div>
-
-            <!-- SECTION C — Valutazione dei Controlli associati -->
-            <div class="section-title">C &#8212; Valutazione dei Controlli Associati</div>
-
-            <div id="controlsContainer">
-                <!-- Populated dynamically by client script -->
-            </div>
-
-            <!-- Footer actions -->
-            <div class="footer-actions">
-                <button type="button" class="btn btn-secondary" id="btnAnnulla">Annulla</button>
-                <button type="button" class="btn btn-primary" id="btnSalva">Salva</button>
-            </div>
-
-        </j:if>
-
+        <!-- Main content — rendered by client script -->
+        <div id="mainContent"></div>
     </div>
 </div>
 
-<!-- Inject server-side data as JavaScript variables for client script -->
+<!-- Inject server-side data as a single JSON variable -->
 <script>
-    var g_ra_sys_id = '${jvar_sys_id}';
-    var g_ra_probabilita = '${jvar_ra_probabilita}';
-    var g_ra_impatto = '${jvar_ra_impatto}';
-    var g_ra_rischio = '${jvar_ra_rischio}';
-    var g_ra_data_valutazione = '${jvar_ra_data_val}';
-    var g_ra_record_found = '${jvar_record_found}';
-    var m2mData = ${jvar_m2m_data};
+    var g_pageData = ${jvar_page_data};
 </script>
 
 </body>
