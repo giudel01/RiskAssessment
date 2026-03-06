@@ -1,0 +1,498 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+
+<!-- Processing Script variables are injected via Jelly evaluate -->
+<g2:evaluate var="jvar_sys_id" jelly="true">
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    sysIdParam;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_error_message" jelly="true">
+    var errorMsg = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (!sysIdParam) {
+        errorMsg = 'Parametro sys_id mancante. Chiudere questa finestra e riprovare.';
+    } else {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (!gr.get(sysIdParam)) {
+            errorMsg = 'Record Risk Assessment non trovato.';
+        }
+    }
+    errorMsg;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_record_found" jelly="true">
+    var found = 'false';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) {
+            found = 'true';
+        }
+    }
+    found;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_number" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('number') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_short_desc" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('short_description') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_probabilita" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('u_probabilita_inerente231') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_impatto" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('u_impatto_inerente231') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_rischio" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('u_rischio_inerente') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_data_val" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('u_data_valutazione') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_ra_note_val" jelly="true">
+    var val = '';
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var gr = new GlideRecord('u_risk_assessment_custom');
+        if (gr.get(sysIdParam)) { val = gr.getValue('u_note_valutazione') || ''; }
+    }
+    val;
+</g2:evaluate>
+
+<g2:evaluate var="jvar_m2m_data" jelly="true">
+    var m2mArray = [];
+    var sysIdParam = RP.getParameterValue('sys_id') || '';
+    if (sysIdParam) {
+        var grCheck = new GlideRecord('u_risk_assessment_custom');
+        if (grCheck.get(sysIdParam)) {
+            var m2m = new GlideRecord('u_m2m_u_risk_asmt_control');
+            m2m.addQuery('u_risk_assessment_custom', sysIdParam);
+            m2m.query();
+            while (m2m.next()) {
+                var cNum = '';
+                var cDesc = '';
+                var controlRef = m2m.u_sn_compliance_control;
+                if (controlRef) {
+                    cNum = controlRef.number + '';
+                    cDesc = controlRef.short_description + '';
+                }
+                m2mArray.push({
+                    m2mSysId: m2m.getUniqueValue(),
+                    controlNumber: cNum,
+                    controlDesc: cDesc,
+                    risultato: m2m.getValue('u_risultato') || ''
+                });
+            }
+        }
+    }
+    JSON.stringify(m2mArray);
+</g2:evaluate>
+
+<html>
+<head>
+    <title>Valutazione Risk Assessment - ${jvar_ra_number}</title>
+    <style>
+        body {
+            font-family: SourceSansPro, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .ra-eval-container {
+            max-width: 960px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+        .ra-eval-header {
+            background-color: #293e40;
+            color: #ffffff;
+            padding: 16px 24px;
+            border-radius: 4px 4px 0 0;
+            margin-bottom: 0;
+        }
+        .ra-eval-header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 400;
+        }
+        .ra-eval-header h1 strong {
+            font-weight: 600;
+        }
+        .ra-eval-body {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            padding: 24px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #293e40;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }
+        .section-title:first-child {
+            margin-top: 0;
+        }
+        .info-box {
+            background-color: #f0f7fb;
+            border: 1px solid #bce0f5;
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+        .info-box .info-label {
+            font-weight: 600;
+            color: #555;
+            display: inline-block;
+            min-width: 160px;
+        }
+        .info-box .info-value {
+            color: #333;
+        }
+        .info-row {
+            margin-bottom: 6px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+        .form-group label .required-marker {
+            color: #d32f2f;
+            margin-left: 2px;
+        }
+        .form-group select,
+        .form-group input[type="text"],
+        .form-group input[type="date"],
+        .form-group textarea {
+            width: 100%;
+            max-width: 400px;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            max-width: 100%;
+            height: 80px;
+            resize: vertical;
+        }
+        .form-group input[readonly] {
+            background-color: #f5f5f5;
+            color: #666;
+        }
+        .form-inline-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .form-inline-row .form-group {
+            flex: 1;
+            min-width: 180px;
+        }
+        .controls-table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .controls-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        .controls-table thead th {
+            background-color: #f5f5f5;
+            border-bottom: 2px solid #ddd;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .controls-table tbody td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+        .controls-table tbody tr:hover {
+            background-color: #fafafa;
+        }
+        .controls-table select {
+            width: 100%;
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+        .no-controls-msg {
+            padding: 16px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+        .footer-actions {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+            text-align: right;
+        }
+        .footer-actions .btn {
+            display: inline-block;
+            padding: 8px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .btn-primary {
+            background-color: #1f8476;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background-color: #17695e;
+        }
+        .btn-primary:disabled {
+            background-color: #a0c4bf;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background-color: #ccc;
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        .alert-danger {
+            background-color: #fdecea;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .alert-info {
+            background-color: #e8f4fd;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .field-error {
+            border-color: #d32f2f !important;
+            box-shadow: 0 0 0 1px #d32f2f;
+        }
+        .highlight-flash {
+            transition: background-color 0.3s ease;
+            background-color: #fff9c4 !important;
+        }
+        .saving-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.7);
+            z-index: 9999;
+            text-align: center;
+            padding-top: 200px;
+        }
+        .saving-overlay .spinner-text {
+            font-size: 16px;
+            color: #333;
+        }
+        .saving-overlay .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #ddd;
+            border-top-color: #1f8476;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Saving overlay -->
+<div id="savingOverlay" class="saving-overlay">
+    <div>
+        <div class="spinner"></div>
+        <div class="spinner-text">Salvataggio in corso...</div>
+    </div>
+</div>
+
+<div class="ra-eval-container">
+
+    <!-- Header -->
+    <div class="ra-eval-header">
+        <h1>Valutazione Risk Assessment &#8212; <strong>${jvar_ra_number}</strong></h1>
+    </div>
+
+    <div class="ra-eval-body">
+
+        <!-- Error messages container -->
+        <div id="errorContainer"></div>
+
+        <!-- Show error if sys_id missing or record not found -->
+        <j:if test="${jvar_error_message != ''}">
+            <div class="alert alert-danger" id="serverError">
+                ${jvar_error_message}
+            </div>
+        </j:if>
+
+        <j:if test="${jvar_record_found == 'true'}">
+
+            <!-- Hidden field for sys_id -->
+            <input type="hidden" id="raSysId" value="${jvar_sys_id}" />
+            <!-- Hidden field for rischio inerente (for submit) -->
+            <input type="hidden" id="rischioInerenteHidden" value="${jvar_ra_rischio}" />
+
+            <!-- SECTION A — Dati del Risk Assessment (read-only) -->
+            <div class="section-title">A &#8212; Dati del Risk Assessment</div>
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Number:</span>
+                    <span class="info-value">${jvar_ra_number}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Short Description:</span>
+                    <span class="info-value">${jvar_ra_short_desc}</span>
+                </div>
+            </div>
+
+            <!-- SECTION B — Valutazione del Risk Assessment (editabile) -->
+            <div class="section-title">B &#8212; Valutazione del Risk Assessment</div>
+
+            <div class="form-inline-row">
+                <div class="form-group">
+                    <label for="probabilita">Probabilit&#224; Inerente <span class="required-marker">*</span></label>
+                    <select id="probabilita" name="probabilita">
+                        <option value="">-- Seleziona --</option>
+                        <option value="1">Bassa</option>
+                        <option value="2">Media</option>
+                        <option value="3">Alta</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="impatto">Impatto Inerente <span class="required-marker">*</span></label>
+                    <select id="impatto" name="impatto">
+                        <option value="">-- Seleziona --</option>
+                        <option value="1">Basso</option>
+                        <option value="2">Medio</option>
+                        <option value="3">Alto</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rischioInerente">Rischio Inerente</label>
+                    <input type="text" id="rischioInerente" name="rischioInerente" readonly="readonly" value="${jvar_ra_rischio}" />
+                </div>
+            </div>
+
+            <div class="form-inline-row">
+                <div class="form-group">
+                    <label for="dataValutazione">Data Valutazione <span class="required-marker">*</span></label>
+                    <input type="date" id="dataValutazione" name="dataValutazione" value="" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="noteValutazione">Note Valutazione</label>
+                <textarea id="noteValutazione" name="noteValutazione" maxlength="1000" placeholder="Max 1000 caratteri">${jvar_ra_note_val}</textarea>
+            </div>
+
+            <!-- SECTION C — Valutazione dei Controlli associati -->
+            <div class="section-title">C &#8212; Valutazione dei Controlli Associati</div>
+
+            <div id="controlsContainer">
+                <!-- Populated dynamically by client script -->
+            </div>
+
+            <!-- Footer actions -->
+            <div class="footer-actions">
+                <button type="button" class="btn btn-secondary" id="btnAnnulla">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btnSalva">Salva</button>
+            </div>
+
+        </j:if>
+
+    </div>
+</div>
+
+<!-- Inject server-side data as JavaScript variables for client script -->
+<script>
+    var g_ra_sys_id = '${jvar_sys_id}';
+    var g_ra_probabilita = '${jvar_ra_probabilita}';
+    var g_ra_impatto = '${jvar_ra_impatto}';
+    var g_ra_rischio = '${jvar_ra_rischio}';
+    var g_ra_data_valutazione = '${jvar_ra_data_val}';
+    var g_ra_record_found = '${jvar_record_found}';
+    var m2mData = ${jvar_m2m_data};
+</script>
+
+</body>
+</html>
+</j:jelly>
