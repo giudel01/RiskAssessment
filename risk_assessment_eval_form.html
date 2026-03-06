@@ -1,66 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
-
-<g2:evaluate var="jvar_page_data" jelly="true">
-    var output = {
-        sysId: '',
-        number: '',
-        shortDescription: '',
-        probabilita: '',
-        impatto: '',
-        rischioInerente: '',
-        dataValutazione: '',
-        noteValutazione: '',
-        recordFound: false,
-        errorMessage: '',
-        m2mData: []
-    };
-
-    try {
-        var sysIdParam = RP.getParameterValue('sys_id');
-        if (!sysIdParam || sysIdParam == 'null' || sysIdParam == 'undefined') {
-            output.errorMessage = 'Parametro sys_id mancante. Chiudere questa finestra e riprovare.';
-        } else {
-            output.sysId = sysIdParam + '';
-            var gr = new GlideRecord('u_risk_assessment_custom');
-            if (gr.get(sysIdParam)) {
-                output.recordFound = true;
-                output.number = gr.getValue('number') || '';
-                output.shortDescription = gr.getValue('short_description') || '';
-                output.probabilita = gr.getValue('u_probabilita_inerente231') || '';
-                output.impatto = gr.getValue('u_impatto_inerente231') || '';
-                output.rischioInerente = gr.getValue('u_rischio_inerente') || '';
-                output.dataValutazione = gr.getValue('u_data_valutazione') || '';
-                output.noteValutazione = gr.getValue('u_note_valutazione') || '';
-
-                var m2m = new GlideRecord('u_m2m_u_risk_asmt_control');
-                m2m.addQuery('u_risk_assessment_custom', sysIdParam);
-                m2m.query();
-                while (m2m.next()) {
-                    var cNum = '';
-                    var cDesc = '';
-                    if (m2m.u_sn_compliance_control) {
-                        cNum = m2m.u_sn_compliance_control.number + '';
-                        cDesc = m2m.u_sn_compliance_control.short_description + '';
-                    }
-                    output.m2mData.push({
-                        m2mSysId: m2m.getUniqueValue() + '',
-                        controlNumber: cNum,
-                        controlDesc: cDesc,
-                        risultato: m2m.getValue('u_risultato') || ''
-                    });
-                }
-            } else {
-                output.errorMessage = 'Record Risk Assessment non trovato.';
-            }
-        }
-    } catch (e) {
-        output.errorMessage = 'Errore server: ' + e.message;
-    }
-
-    JSON.stringify(output);
-</g2:evaluate>
-
 <html>
 <head>
     <title>Valutazione Risk Assessment</title>
@@ -120,15 +59,9 @@
             display: inline-block;
             min-width: 160px;
         }
-        .info-box .info-value {
-            color: #333;
-        }
-        .info-row {
-            margin-bottom: 6px;
-        }
-        .form-group {
-            margin-bottom: 14px;
-        }
+        .info-box .info-value { color: #333; }
+        .info-row { margin-bottom: 6px; }
+        .form-group { margin-bottom: 14px; }
         .form-group label {
             display: block;
             font-weight: 600;
@@ -199,9 +132,7 @@
             font-size: 13px;
             vertical-align: middle;
         }
-        .controls-table tbody tr:hover {
-            background-color: #fafafa;
-        }
+        .controls-table tbody tr:hover { background-color: #fafafa; }
         .controls-table select {
             width: 100%;
             padding: 4px 8px;
@@ -231,24 +162,11 @@
             cursor: pointer;
             margin-left: 8px;
         }
-        .btn-primary {
-            background-color: #1f8476;
-            color: #fff;
-        }
-        .btn-primary:hover {
-            background-color: #17695e;
-        }
-        .btn-primary:disabled {
-            background-color: #a0c4bf;
-            cursor: not-allowed;
-        }
-        .btn-secondary {
-            background-color: #e0e0e0;
-            color: #333;
-        }
-        .btn-secondary:hover {
-            background-color: #ccc;
-        }
+        .btn-primary { background-color: #1f8476; color: #fff; }
+        .btn-primary:hover { background-color: #17695e; }
+        .btn-primary:disabled { background-color: #a0c4bf; cursor: not-allowed; }
+        .btn-secondary { background-color: #e0e0e0; color: #333; }
+        .btn-secondary:hover { background-color: #ccc; }
         .alert {
             padding: 12px 16px;
             border-radius: 4px;
@@ -282,28 +200,36 @@
             text-align: center;
             padding-top: 200px;
         }
-        .saving-overlay .spinner-text {
-            font-size: 16px;
-            color: #333;
-        }
+        .saving-overlay .spinner-text { font-size: 16px; color: #333; }
         .saving-overlay .spinner {
             display: inline-block;
-            width: 30px;
-            height: 30px;
+            width: 30px; height: 30px;
             border: 3px solid #ddd;
             border-top-color: #1f8476;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-bottom: 12px;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-msg {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 14px;
+        }
+        .loading-msg .spinner {
+            display: inline-block;
+            width: 24px; height: 24px;
+            border: 3px solid #ddd;
+            border-top-color: #1f8476;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 8px;
         }
     </style>
 </head>
 <body>
 
-<!-- Saving overlay -->
 <div id="savingOverlay" class="saving-overlay">
     <div>
         <div class="spinner"></div>
@@ -312,33 +238,25 @@
 </div>
 
 <div class="ra-eval-container">
-    <!-- Header -->
     <div class="ra-eval-header">
         <h1>Valutazione Risk Assessment &#8212; <strong id="headerNumber"></strong></h1>
     </div>
-
     <div class="ra-eval-body">
-        <!-- Error messages container -->
         <div id="errorContainer"></div>
-
-        <!-- Main content — rendered by client script -->
-        <div id="mainContent"></div>
+        <div id="mainContent">
+            <div class="loading-msg">
+                <div class="spinner"></div>
+                <div>Caricamento dati in corso...</div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Inject server-side data as a single JSON variable -->
-<script>
-//<![CDATA[
-    var g_pageData = ${jvar_page_data};
-//]]>
-</script>
-
-<!-- Client script: renders form from g_pageData, handles validation and save -->
 <script>
 //<![CDATA[
 // ========================================================
-// Client Script — risk_assessment_eval_form (Vanilla JS)
-// No jQuery dependency. No ES6.
+// Client Script — Vanilla JS, no jQuery, no ES6
+// Loads data via GlideAjax, renders form, handles save.
 // ========================================================
 (function() {
 
@@ -361,96 +279,118 @@
 
     function byId(id) { return document.getElementById(id); }
 
-    // ---- Wait for DOM ready ----
+    // Parse sys_id from URL
+    function getUrlParam(name) {
+        var search = window.location.search || '';
+        if (search.indexOf('?') === 0) search = search.substring(1);
+        var parts = search.split('&');
+        for (var i = 0; i < parts.length; i++) {
+            var pair = parts[i].split('=');
+            if (decodeURIComponent(pair[0]) === name) {
+                return decodeURIComponent(pair[1] || '');
+            }
+        }
+        return '';
+    }
+
+    // ---- Main init ----
     document.addEventListener('DOMContentLoaded', function() {
 
-        var data = window.g_pageData;
-
-        // Fallback if data missing
-        if (!data || typeof data !== 'object') {
+        var sysId = getUrlParam('sys_id');
+        if (!sysId) {
+            byId('mainContent').innerHTML = '';
             byId('errorContainer').innerHTML =
-                '<div class="alert alert-danger">Errore nel caricamento dei dati. Verificare che il sys_id sia presente nell\'URL.</div>';
+                '<div class="alert alert-danger">Parametro sys_id mancante nell\'URL. Chiudere questa finestra e riprovare.</div>';
             return;
         }
 
-        // Set header
+        // Load data via GlideAjax
+        var ga = new GlideAjax('SaveRiskEvaluation');
+        ga.addParam('sysparm_name', 'getEvaluationData');
+        ga.addParam('sysparm_sys_id', sysId);
+        ga.getXMLAnswer(function(response) {
+            var data;
+            try {
+                data = JSON.parse(response);
+            } catch (e) {
+                byId('mainContent').innerHTML = '';
+                byId('errorContainer').innerHTML =
+                    '<div class="alert alert-danger">Errore nel parsing della risposta dal server.</div>';
+                return;
+            }
+            renderPage(data);
+        });
+    });
+
+    // ---- Render entire page from data object ----
+    function renderPage(data) {
+
         byId('headerNumber').textContent = data.number || '';
 
-        // Show error
         if (data.errorMessage) {
+            byId('mainContent').innerHTML = '';
             byId('errorContainer').innerHTML =
                 '<div class="alert alert-danger">' + escapeHtml(data.errorMessage) + '</div>';
             return;
         }
 
         if (!data.recordFound) {
+            byId('mainContent').innerHTML = '';
             byId('errorContainer').innerHTML =
                 '<div class="alert alert-danger">Record non trovato.</div>';
             return;
         }
 
-        // =============================================
-        // RENDER THE FORM
-        // =============================================
+        // Build form HTML
         var html = '';
 
-        // Hidden fields
         html += '<input type="hidden" id="raSysId" value="' + escapeHtml(data.sysId) + '" />';
         html += '<input type="hidden" id="rischioInerenteHidden" value="' + escapeHtml(data.rischioInerente) + '" />';
 
         // SECTION A
         html += '<div class="section-title">A &#8212; Dati del Risk Assessment</div>';
         html += '<div class="info-box">';
-        html += '  <div class="info-row"><span class="info-label">Number:</span> <span class="info-value">' + escapeHtml(data.number) + '</span></div>';
-        html += '  <div class="info-row"><span class="info-label">Short Description:</span> <span class="info-value">' + escapeHtml(data.shortDescription) + '</span></div>';
+        html += '<div class="info-row"><span class="info-label">Number:</span> <span class="info-value">' + escapeHtml(data.number) + '</span></div>';
+        html += '<div class="info-row"><span class="info-label">Short Description:</span> <span class="info-value">' + escapeHtml(data.shortDescription) + '</span></div>';
         html += '</div>';
 
         // SECTION B
         html += '<div class="section-title">B &#8212; Valutazione del Risk Assessment</div>';
         html += '<div class="form-inline-row">';
 
-        // Probabilita
         html += '<div class="form-group">';
-        html += '  <label for="probabilita">Probabilit\u00e0 Inerente <span class="required-marker">*</span></label>';
-        html += '  <select id="probabilita" name="probabilita">';
-        html += '    <option value="">-- Seleziona --</option>';
-        html += '    <option value="1"' + (data.probabilita === '1' ? ' selected' : '') + '>Bassa</option>';
-        html += '    <option value="2"' + (data.probabilita === '2' ? ' selected' : '') + '>Media</option>';
-        html += '    <option value="3"' + (data.probabilita === '3' ? ' selected' : '') + '>Alta</option>';
-        html += '  </select>';
-        html += '</div>';
+        html += '<label for="probabilita">Probabilit\u00e0 Inerente <span class="required-marker">*</span></label>';
+        html += '<select id="probabilita" name="probabilita">';
+        html += '<option value="">-- Seleziona --</option>';
+        html += '<option value="1"' + (data.probabilita === '1' ? ' selected' : '') + '>Bassa</option>';
+        html += '<option value="2"' + (data.probabilita === '2' ? ' selected' : '') + '>Media</option>';
+        html += '<option value="3"' + (data.probabilita === '3' ? ' selected' : '') + '>Alta</option>';
+        html += '</select></div>';
 
-        // Impatto
         html += '<div class="form-group">';
-        html += '  <label for="impatto">Impatto Inerente <span class="required-marker">*</span></label>';
-        html += '  <select id="impatto" name="impatto">';
-        html += '    <option value="">-- Seleziona --</option>';
-        html += '    <option value="1"' + (data.impatto === '1' ? ' selected' : '') + '>Basso</option>';
-        html += '    <option value="2"' + (data.impatto === '2' ? ' selected' : '') + '>Medio</option>';
-        html += '    <option value="3"' + (data.impatto === '3' ? ' selected' : '') + '>Alto</option>';
-        html += '  </select>';
-        html += '</div>';
+        html += '<label for="impatto">Impatto Inerente <span class="required-marker">*</span></label>';
+        html += '<select id="impatto" name="impatto">';
+        html += '<option value="">-- Seleziona --</option>';
+        html += '<option value="1"' + (data.impatto === '1' ? ' selected' : '') + '>Basso</option>';
+        html += '<option value="2"' + (data.impatto === '2' ? ' selected' : '') + '>Medio</option>';
+        html += '<option value="3"' + (data.impatto === '3' ? ' selected' : '') + '>Alto</option>';
+        html += '</select></div>';
 
-        // Rischio Inerente (read-only)
         html += '<div class="form-group">';
-        html += '  <label for="rischioInerente">Rischio Inerente</label>';
-        html += '  <input type="text" id="rischioInerente" name="rischioInerente" readonly value="' + escapeHtml(data.rischioInerente) + '" />';
+        html += '<label for="rischioInerente">Rischio Inerente</label>';
+        html += '<input type="text" id="rischioInerente" readonly value="' + escapeHtml(data.rischioInerente) + '" />';
         html += '</div>';
         html += '</div>';
 
-        // Data Valutazione
         var dataValDefault = data.dataValutazione || getTodayStr();
-        html += '<div class="form-inline-row">';
-        html += '  <div class="form-group">';
-        html += '    <label for="dataValutazione">Data Valutazione <span class="required-marker">*</span></label>';
-        html += '    <input type="date" id="dataValutazione" name="dataValutazione" value="' + escapeHtml(dataValDefault) + '" />';
-        html += '  </div>';
-        html += '</div>';
+        html += '<div class="form-inline-row"><div class="form-group">';
+        html += '<label for="dataValutazione">Data Valutazione <span class="required-marker">*</span></label>';
+        html += '<input type="date" id="dataValutazione" value="' + escapeHtml(dataValDefault) + '" />';
+        html += '</div></div>';
 
-        // Note
         html += '<div class="form-group">';
-        html += '  <label for="noteValutazione">Note Valutazione</label>';
-        html += '  <textarea id="noteValutazione" name="noteValutazione" maxlength="1000" placeholder="Max 1000 caratteri">' + escapeHtml(data.noteValutazione) + '</textarea>';
+        html += '<label for="noteValutazione">Note Valutazione</label>';
+        html += '<textarea id="noteValutazione" maxlength="1000" placeholder="Max 1000 caratteri">' + escapeHtml(data.noteValutazione) + '</textarea>';
         html += '</div>';
 
         // SECTION C
@@ -459,8 +399,7 @@
         if (!data.m2mData || data.m2mData.length === 0) {
             html += '<div class="no-controls-msg">Nessun controllo associato a questo Risk Assessment.</div>';
         } else {
-            html += '<div class="controls-table-wrapper">';
-            html += '<table class="controls-table"><thead><tr>';
+            html += '<div class="controls-table-wrapper"><table class="controls-table"><thead><tr>';
             html += '<th style="width:15%;">Numero Controllo</th>';
             html += '<th style="width:45%;">Descrizione</th>';
             html += '<th style="width:40%;">Risultato <span style="color:#d32f2f;">*</span></th>';
@@ -470,19 +409,16 @@
                 var row = data.m2mData[i];
                 var sid = escapeHtml(row.m2mSysId);
                 var ris = row.risultato || '';
-
                 html += '<tr>';
                 html += '<td>' + escapeHtml(row.controlNumber) + '</td>';
                 html += '<td>' + escapeHtml(row.controlDesc) + '</td>';
-                html += '<td>';
-                html += '<select class="m2m-risultato" data-m2m-sysid="' + sid + '" id="risultato_' + sid + '">';
+                html += '<td><select class="m2m-risultato" data-m2m-sysid="' + sid + '">';
                 html += '<option value="">-- Seleziona --</option>';
                 html += '<option value="conforme"' + (ris === 'conforme' ? ' selected' : '') + '>Conforme</option>';
                 html += '<option value="parzialmente_conforme"' + (ris === 'parzialmente_conforme' ? ' selected' : '') + '>Parzialmente Conforme</option>';
                 html += '<option value="non_conforme"' + (ris === 'non_conforme' ? ' selected' : '') + '>Non Conforme</option>';
                 html += '<option value="non_applicabile"' + (ris === 'non_applicabile' ? ' selected' : '') + '>Non Applicabile</option>';
-                html += '</select>';
-                html += '</td></tr>';
+                html += '</select></td></tr>';
             }
 
             html += '</tbody></table></div>';
@@ -490,157 +426,136 @@
 
         // Footer
         html += '<div class="footer-actions">';
-        html += '  <button type="button" class="btn btn-secondary" id="btnAnnulla">Annulla</button>';
-        html += '  <button type="button" class="btn btn-primary" id="btnSalva">Salva</button>';
+        html += '<button type="button" class="btn btn-secondary" id="btnAnnulla">Annulla</button>';
+        html += '<button type="button" class="btn btn-primary" id="btnSalva">Salva</button>';
         html += '</div>';
 
         byId('mainContent').innerHTML = html;
 
-        // =============================================
-        // DYNAMIC CALC — Rischio Inerente
-        // =============================================
-        byId('probabilita').addEventListener('change', calcRischioInerente);
-        byId('impatto').addEventListener('change', calcRischioInerente);
-
-        function calcRischioInerente() {
-            var prob = parseInt(byId('probabilita').value, 10) || 0;
-            var imp = parseInt(byId('impatto').value, 10) || 0;
-            var rischio = '';
-            if (prob > 0 && imp > 0) rischio = prob * imp;
-            byId('rischioInerente').value = rischio;
-            byId('rischioInerenteHidden').value = rischio;
-
-            if (rischio !== '') {
-                var field = byId('rischioInerente');
-                field.classList.add('highlight-flash');
-                setTimeout(function() { field.classList.remove('highlight-flash'); }, 500);
-            }
-        }
-
-        // =============================================
-        // VALIDATION
-        // =============================================
-        function validateForm() {
-            var errors = [];
-            byId('errorContainer').innerHTML = '';
-
-            // Remove previous field-error classes
-            var errFields = document.querySelectorAll('.field-error');
-            for (var e = 0; e < errFields.length; e++) errFields[e].classList.remove('field-error');
-
-            if (!byId('probabilita').value) {
-                errors.push('Il campo "Probabilit\u00e0 Inerente" \u00e8 obbligatorio.');
-                byId('probabilita').classList.add('field-error');
-            }
-            if (!byId('impatto').value) {
-                errors.push('Il campo "Impatto Inerente" \u00e8 obbligatorio.');
-                byId('impatto').classList.add('field-error');
-            }
-            if (!byId('dataValutazione').value) {
-                errors.push('Il campo "Data Valutazione" \u00e8 obbligatorio.');
-                byId('dataValutazione').classList.add('field-error');
-            }
-
-            if (data.m2mData && data.m2mData.length > 0) {
-                var selects = document.querySelectorAll('.m2m-risultato');
-                var missingControls = [];
-                for (var s = 0; s < selects.length; s++) {
-                    if (!selects[s].value) {
-                        selects[s].classList.add('field-error');
-                        var sysId = selects[s].getAttribute('data-m2m-sysid');
-                        for (var j = 0; j < data.m2mData.length; j++) {
-                            if (data.m2mData[j].m2mSysId === sysId) {
-                                missingControls.push(data.m2mData[j].controlNumber);
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (missingControls.length > 0) {
-                    errors.push('Il campo "Risultato" \u00e8 obbligatorio per: ' + missingControls.join(', '));
-                }
-            }
-
-            if (errors.length > 0) {
-                var errHtml = '<div class="alert alert-danger"><strong>Errori di validazione:</strong><ul>';
-                for (var k = 0; k < errors.length; k++) errHtml += '<li>' + errors[k] + '</li>';
-                errHtml += '</ul></div>';
-                byId('errorContainer').innerHTML = errHtml;
-                window.scrollTo(0, 0);
-                return false;
-            }
-            return true;
-        }
-
-        // =============================================
-        // SAVE — GlideAjax
-        // =============================================
+        // ---- Event listeners ----
+        byId('probabilita').addEventListener('change', calcRischio);
+        byId('impatto').addEventListener('change', calcRischio);
         byId('btnSalva').addEventListener('click', function() {
-            if (validateForm()) saveEvaluation();
+            if (validateForm(data)) saveEvaluation(data);
         });
+        byId('btnAnnulla').addEventListener('click', function() { window.close(); });
+    }
 
-        function saveEvaluation() {
-            byId('btnSalva').disabled = true;
-            byId('savingOverlay').style.display = 'block';
+    function calcRischio() {
+        var prob = parseInt(byId('probabilita').value, 10) || 0;
+        var imp = parseInt(byId('impatto').value, 10) || 0;
+        var rischio = '';
+        if (prob > 0 && imp > 0) rischio = prob * imp;
+        byId('rischioInerente').value = rischio;
+        byId('rischioInerenteHidden').value = rischio;
+        if (rischio !== '') {
+            var f = byId('rischioInerente');
+            f.classList.add('highlight-flash');
+            setTimeout(function() { f.classList.remove('highlight-flash'); }, 500);
+        }
+    }
 
-            var m2mResults = [];
+    function validateForm(data) {
+        var errors = [];
+        byId('errorContainer').innerHTML = '';
+        var prev = document.querySelectorAll('.field-error');
+        for (var e = 0; e < prev.length; e++) prev[e].classList.remove('field-error');
+
+        if (!byId('probabilita').value) {
+            errors.push('Il campo "Probabilit\u00e0 Inerente" \u00e8 obbligatorio.');
+            byId('probabilita').classList.add('field-error');
+        }
+        if (!byId('impatto').value) {
+            errors.push('Il campo "Impatto Inerente" \u00e8 obbligatorio.');
+            byId('impatto').classList.add('field-error');
+        }
+        if (!byId('dataValutazione').value) {
+            errors.push('Il campo "Data Valutazione" \u00e8 obbligatorio.');
+            byId('dataValutazione').classList.add('field-error');
+        }
+
+        if (data.m2mData && data.m2mData.length > 0) {
             var selects = document.querySelectorAll('.m2m-risultato');
+            var missing = [];
             for (var s = 0; s < selects.length; s++) {
-                m2mResults.push({
-                    m2mSysId: selects[s].getAttribute('data-m2m-sysid'),
-                    risultato: selects[s].value
-                });
-            }
-
-            var ga = new GlideAjax('SaveRiskEvaluation');
-            ga.addParam('sysparm_name', 'saveEvaluation');
-            ga.addParam('sysparm_sys_id', data.sysId);
-            ga.addParam('sysparm_probabilita', byId('probabilita').value);
-            ga.addParam('sysparm_impatto', byId('impatto').value);
-            ga.addParam('sysparm_rischio', byId('rischioInerenteHidden').value);
-            ga.addParam('sysparm_data_valutazione', byId('dataValutazione').value);
-            ga.addParam('sysparm_note_valutazione', byId('noteValutazione').value);
-            ga.addParam('sysparm_m2m_results', JSON.stringify(m2mResults));
-
-            ga.getXMLAnswer(function(response) {
-                byId('savingOverlay').style.display = 'none';
-                byId('btnSalva').disabled = false;
-
-                try {
-                    var result = JSON.parse(response);
-                    if (result.success) {
-                        var returnUrl = 'nav_to.do?uri=u_risk_assessment_custom.do'
-                            + '?sys_id=' + encodeURIComponent(data.sysId)
-                            + '%26sysparm_view=default'
-                            + '%26sysparm_message=' + encodeURIComponent('Valutazione salvata con successo');
-
-                        if (window.opener) {
-                            window.opener.location.href = returnUrl;
-                            window.close();
-                        } else {
-                            window.location.href = returnUrl;
+                if (!selects[s].value) {
+                    selects[s].classList.add('field-error');
+                    var sid = selects[s].getAttribute('data-m2m-sysid');
+                    for (var j = 0; j < data.m2mData.length; j++) {
+                        if (data.m2mData[j].m2mSysId === sid) {
+                            missing.push(data.m2mData[j].controlNumber);
+                            break;
                         }
-                    } else {
-                        byId('errorContainer').innerHTML =
-                            '<div class="alert alert-danger"><strong>Errore:</strong> ' + escapeHtml(result.message) + '</div>';
-                        window.scrollTo(0, 0);
                     }
-                } catch (ex) {
-                    byId('errorContainer').innerHTML =
-                        '<div class="alert alert-danger"><strong>Errore di rete.</strong> Riprovare.</div>';
-                    window.scrollTo(0, 0);
                 }
+            }
+            if (missing.length > 0) {
+                errors.push('Il campo "Risultato" \u00e8 obbligatorio per: ' + missing.join(', '));
+            }
+        }
+
+        if (errors.length > 0) {
+            var h = '<div class="alert alert-danger"><strong>Errori di validazione:</strong><ul>';
+            for (var k = 0; k < errors.length; k++) h += '<li>' + errors[k] + '</li>';
+            h += '</ul></div>';
+            byId('errorContainer').innerHTML = h;
+            window.scrollTo(0, 0);
+            return false;
+        }
+        return true;
+    }
+
+    function saveEvaluation(data) {
+        byId('btnSalva').disabled = true;
+        byId('savingOverlay').style.display = 'block';
+
+        var m2mResults = [];
+        var selects = document.querySelectorAll('.m2m-risultato');
+        for (var s = 0; s < selects.length; s++) {
+            m2mResults.push({
+                m2mSysId: selects[s].getAttribute('data-m2m-sysid'),
+                risultato: selects[s].value
             });
         }
 
-        // =============================================
-        // CANCEL
-        // =============================================
-        byId('btnAnnulla').addEventListener('click', function() {
-            window.close();
-        });
+        var ga = new GlideAjax('SaveRiskEvaluation');
+        ga.addParam('sysparm_name', 'saveEvaluation');
+        ga.addParam('sysparm_sys_id', data.sysId);
+        ga.addParam('sysparm_probabilita', byId('probabilita').value);
+        ga.addParam('sysparm_impatto', byId('impatto').value);
+        ga.addParam('sysparm_rischio', byId('rischioInerenteHidden').value);
+        ga.addParam('sysparm_data_valutazione', byId('dataValutazione').value);
+        ga.addParam('sysparm_note_valutazione', byId('noteValutazione').value);
+        ga.addParam('sysparm_m2m_results', JSON.stringify(m2mResults));
 
-    }); // DOMContentLoaded
+        ga.getXMLAnswer(function(response) {
+            byId('savingOverlay').style.display = 'none';
+            byId('btnSalva').disabled = false;
+            try {
+                var result = JSON.parse(response);
+                if (result.success) {
+                    var returnUrl = 'nav_to.do?uri=u_risk_assessment_custom.do'
+                        + '?sys_id=' + encodeURIComponent(data.sysId)
+                        + '%26sysparm_view=default'
+                        + '%26sysparm_message=' + encodeURIComponent('Valutazione salvata con successo');
+                    if (window.opener) {
+                        window.opener.location.href = returnUrl;
+                        window.close();
+                    } else {
+                        window.location.href = returnUrl;
+                    }
+                } else {
+                    byId('errorContainer').innerHTML =
+                        '<div class="alert alert-danger"><strong>Errore:</strong> ' + escapeHtml(result.message) + '</div>';
+                    window.scrollTo(0, 0);
+                }
+            } catch (ex) {
+                byId('errorContainer').innerHTML =
+                    '<div class="alert alert-danger"><strong>Errore di rete.</strong> Riprovare.</div>';
+                window.scrollTo(0, 0);
+            }
+        });
+    }
 
 })();
 //]]>

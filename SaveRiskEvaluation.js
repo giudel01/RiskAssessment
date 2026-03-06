@@ -1,6 +1,68 @@
 var SaveRiskEvaluation = Class.create();
 SaveRiskEvaluation.prototype = Object.extendsObject(AbstractAjaxProcessor, {
 
+    getEvaluationData: function() {
+        var output = {
+            sysId: '',
+            number: '',
+            shortDescription: '',
+            probabilita: '',
+            impatto: '',
+            rischioInerente: '',
+            dataValutazione: '',
+            noteValutazione: '',
+            recordFound: false,
+            errorMessage: '',
+            m2mData: []
+        };
+
+        try {
+            var sysId = this.getParameter('sysparm_sys_id');
+            if (!sysId) {
+                output.errorMessage = 'Parametro sys_id mancante.';
+                return JSON.stringify(output);
+            }
+
+            output.sysId = sysId + '';
+            var gr = new GlideRecord('u_risk_assessment_custom');
+            if (!gr.get(sysId)) {
+                output.errorMessage = 'Record Risk Assessment non trovato.';
+                return JSON.stringify(output);
+            }
+
+            output.recordFound = true;
+            output.number = gr.getValue('number') || '';
+            output.shortDescription = gr.getValue('short_description') || '';
+            output.probabilita = gr.getValue('u_probabilita_inerente231') || '';
+            output.impatto = gr.getValue('u_impatto_inerente231') || '';
+            output.rischioInerente = gr.getValue('u_rischio_inerente') || '';
+            output.dataValutazione = gr.getValue('u_data_valutazione') || '';
+            output.noteValutazione = gr.getValue('u_note_valutazione') || '';
+
+            var m2m = new GlideRecord('u_m2m_u_risk_asmt_control');
+            m2m.addQuery('u_risk_assessment_custom', sysId);
+            m2m.query();
+            while (m2m.next()) {
+                var cNum = '';
+                var cDesc = '';
+                if (m2m.u_sn_compliance_control) {
+                    cNum = m2m.u_sn_compliance_control.number + '';
+                    cDesc = m2m.u_sn_compliance_control.short_description + '';
+                }
+                output.m2mData.push({
+                    m2mSysId: m2m.getUniqueValue() + '',
+                    controlNumber: cNum,
+                    controlDesc: cDesc,
+                    risultato: m2m.getValue('u_risultato') || ''
+                });
+            }
+        } catch (e) {
+            output.errorMessage = 'Errore server: ' + e.message;
+        }
+
+        return JSON.stringify(output);
+    },
+
     saveEvaluation: function() {
         var result = {};
 
