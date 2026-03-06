@@ -3,6 +3,9 @@
 <html>
 <head>
     <title>Valutazione Risk Assessment</title>
+    <!-- Inject CSRF token server-side via Jelly -->
+    <g2:evaluate var="jvar_ck" expression="gs.getSession().getSessionToken()" />
+    <script>window.g_ck = '${jvar_ck}';</script>
     <style>
         body {
             font-family: SourceSansPro, "Helvetica Neue", Arial, sans-serif;
