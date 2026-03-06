@@ -328,11 +328,14 @@
 
 <!-- Inject server-side data as a single JSON variable -->
 <script>
+//<![CDATA[
     var g_pageData = ${jvar_page_data};
+//]]>
 </script>
 
 <!-- Client script: renders form from g_pageData, handles validation and save -->
 <script>
+//<![CDATA[
 // ========================================================
 // Client Script — risk_assessment_eval_form (Vanilla JS)
 // No jQuery dependency. No ES6.
@@ -640,6 +643,7 @@
     }); // DOMContentLoaded
 
 })();
+//]]>
 </script>
 
 </body>
